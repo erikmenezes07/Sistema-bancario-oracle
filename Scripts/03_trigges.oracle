@@ -1,4 +1,5 @@
 ### trigger para atualização de saldo
+
 CREATE OR REPLACE TRIGGER TRG_ATUALIZA_SALDO
 AFTER INSERT ON MOVIMENTACAO
 FOR EACH ROW
@@ -10,5 +11,23 @@ BEGIN
         UPDATE CONTA SET SALDO = SALDO - :NEW.VALOR
         WHERE ID_CONTA = :NEW.ID_CONTA;
     END IF;
+END;
+/
+
+### trigger para verificação de saldo
+
+CREATE OR REPLACE TRIGGER TRG_VERIFICAR_SALDO
+BEFORE UPDATE OF SALDO
+ON CONTA
+FOR EACH ROW
+BEGIN
+
+    IF :NEW.SALDO < 0 THEN
+        RAISE_APPLICATION_ERROR(
+            -20002,
+            'Saldo nao pode ser negativo'
+        );
+    END IF;
+
 END;
 /
