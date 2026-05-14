@@ -1,1 +1,23 @@
+UPDATE CLIENTE
+SET
+    TELEFONE = '81985084008',
+    EMAIL = 'erikcarlos.menezes@gmail.com'
+WHERE ID_CLIENTE = 1
 
+UPDATE CLIENTE
+SET
+    TELEFONE = '81985343405',
+    EMAIL = 'camila06vitoria14@gmail.com'
+WHERE ID_CLIENTE = 4
+
+UPDATE CLIENTE
+SET
+    TELEFONE = '8183066814',
+    EMAIL = 'danielduarteld0@gmail.com'
+WHERE ID_CLIENTE = 3
+
+UPDATE CLIENTE
+SET
+    TELEFONE = '81985111111',
+    EMAIL = 'maria@gmail.com'
+WHERE ID_CLIENTE = 2
