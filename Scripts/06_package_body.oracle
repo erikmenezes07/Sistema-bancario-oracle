@@ -1,1 +1,133 @@
+CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
 
+    PROCEDURE CADASTRAR_CLIENTE(
+        P_ID_CLIENTE NUMBER,
+        P_NOME VARCHAR2,
+        P_CPF VARCHAR2,
+        P_TELEFONE VARCHAR2,
+        P_EMAIL VARCHAR2
+    )
+    IS
+    BEGIN
+
+        INSERT INTO CLIENTE (
+            ID_CLIENTE,
+            NOME,
+            CPF,
+            TELEFONE,
+            EMAIL
+        )
+        VALUES (
+            P_ID_CLIENTE,
+            P_NOME,
+            P_CPF,
+            P_TELEFONE,
+            P_EMAIL
+        );
+
+        COMMIT;
+
+    END CADASTRAR_CLIENTE;
+
+    PROCEDURE REALIZAR_DEPOSITO(
+        P_ID_CONTA NUMBER,
+        P_VALOR NUMBER
+    )
+    IS
+    BEGIN
+
+        UPDATE CONTA
+        SET SALDO = SALDO + P_VALOR
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        INSERT INTO MOVIMENTACAO
+        VALUES (
+            SEQ_MOVIMENTACAO.NEXTVAL,
+            P_ID_CONTA,
+            'DEPOSITO',
+            P_VALOR,
+            SYSDATE
+        );
+
+        COMMIT;
+
+    END REALIZAR_DEPOSITO;
+
+    PROCEDURE REALIZAR_SAQUE(
+        P_ID_CONTA NUMBER,
+        P_VALOR NUMBER
+    )
+    IS
+        V_SALDO NUMBER;
+    BEGIN
+
+        SELECT SALDO
+        INTO V_SALDO
+        FROM CONTA
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        IF V_SALDO >= P_VALOR THEN
+
+            UPDATE CONTA
+            SET SALDO = SALDO - P_VALOR
+            WHERE ID_CONTA = P_ID_CONTA;
+
+            INSERT INTO MOVIMENTACAO
+            VALUES (
+                SEQ_MOVIMENTACAO.NEXTVAL,
+                P_ID_CONTA,
+                'SAQUE',
+                P_VALOR,
+                SYSDATE
+            );
+
+            COMMIT;
+
+        ELSE
+            RAISE_APPLICATION_ERROR(
+                -20001,
+                'Saldo insuficiente'
+            );
+        END IF;
+
+    END REALIZAR_SAQUE;
+
+    PROCEDURE TRANSFERIR(
+        P_CONTA_ORIGEM NUMBER,
+        P_CONTA_DESTINO NUMBER,
+        P_VALOR NUMBER
+    )
+    IS
+    BEGIN
+
+        REALIZAR_SAQUE(
+            P_CONTA_ORIGEM,
+            P_VALOR
+        );
+
+        REALIZAR_DEPOSITO(
+            P_CONTA_DESTINO,
+            P_VALOR
+        );
+
+    END TRANSFERIR;
+
+    FUNCTION CONSULTAR_SALDO(
+        P_ID_CONTA NUMBER
+    )
+    RETURN NUMBER
+    IS
+        V_SALDO NUMBER;
+    BEGIN
+
+        SELECT SALDO
+        INTO V_SALDO
+        FROM CONTA
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        RETURN V_SALDO;
+
+    END CONSULTAR_SALDO;
+
+END PKG_BANCO;
+/
