@@ -1,0 +1,33 @@
+CREATE OR REPLACE PACKAGE BODY banco_cliente_pkg AS
+
+    PROCEDURE criar_cliente(p_nome VARCHAR2, p_cpf VARCHAR2, p_tel VARCHAR2, p_email VARCHAR2, p_id OUT NUMBER) IS
+    BEGIN
+        SELECT seq_cliente.NEXTVAL INTO p_id FROM dual;
+        
+        INSERT INTO cliente (id_cliente, nome, cpf, telefone, email)
+        VALUES (p_id, p_nome, p_cpf, p_tel, p_email);
+    END;
+
+
+    PROCEDURE consultar_cliente(p_id NUMBER, p_result OUT SYS_REFCURSOR) IS
+    BEGIN
+        OPEN p_result FOR
+        SELECT * FROM cliente WHERE id_cliente = p_id;
+    END;
+
+
+    PROCEDURE atualizar_cliente(p_id NUMBER, p_nome VARCHAR2, p_cpf VARCHAR2, p_tel VARCHAR2, p_email VARCHAR2) IS
+    BEGIN
+        UPDATE cliente
+        SET nome = p_nome, cpf = p_cpf, telefone = p_tel, email = p_email
+        WHERE id_cliente = p_id;
+    END;
+
+
+    PROCEDURE deletar_cliente(p_id NUMBER) IS
+    BEGIN
+        DELETE FROM cliente WHERE id_cliente = p_id;
+    END;
+
+END banco_cliente_pkg;
+/
