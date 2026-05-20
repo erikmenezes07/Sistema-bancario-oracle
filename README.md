@@ -39,5 +39,4 @@ erDiagram
         NUMBER ID_CONTA
         DATE DATA_LOG
     }
-``TACAO : realiza
 ```
