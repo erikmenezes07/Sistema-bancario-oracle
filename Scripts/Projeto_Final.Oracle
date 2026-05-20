@@ -1,0 +1,686 @@
+----------------------------------------------------------------
+-- TABELA CLIENTE
+----------------------------------------------------------------
+
+CREATE TABLE CLIENTE (
+    ID_CLIENTE NUMBER PRIMARY KEY,
+    NOME VARCHAR2(100),
+    CPF VARCHAR2(14),
+    TELEFONE VARCHAR2(20),
+    EMAIL VARCHAR2(100)
+);
+
+----------------------------------------------------------------
+-- TABELA CONTA
+----------------------------------------------------------------
+
+CREATE TABLE CONTA (
+    ID_CONTA NUMBER PRIMARY KEY,
+    ID_CLIENTE NUMBER,
+    SALDO NUMBER(10,2),
+
+    CONSTRAINT FK_CLIENTE
+    FOREIGN KEY (ID_CLIENTE)
+    REFERENCES CLIENTE(ID_CLIENTE)
+);
+
+----------------------------------------------------------------
+-- TABELA MOVIMENTACAO
+----------------------------------------------------------------
+
+CREATE TABLE MOVIMENTACAO (
+    ID_MOVIMENTACAO NUMBER PRIMARY KEY,
+    ID_CONTA NUMBER,
+    TIPO_MOVIMENTACAO VARCHAR2(20),
+    VALOR NUMBER(10,2),
+    DATA_MOVIMENTACAO DATE,
+
+    CONSTRAINT FK_CONTA_MOV
+    FOREIGN KEY (ID_CONTA)
+    REFERENCES CONTA(ID_CONTA)
+);
+
+----------------------------------------------------------------
+-- TABELA LOG
+----------------------------------------------------------------
+
+CREATE TABLE LOG_OPERACOES (
+    ID_LOG NUMBER PRIMARY KEY,
+    USUARIO_BANCO VARCHAR2(100),
+    OPERACAO VARCHAR2(50),
+    ID_CONTA NUMBER,
+    DATA_LOG DATE
+);
+
+----------------------------------------------------------------
+-- SEQUENCE MOVIMENTACAO
+----------------------------------------------------------------
+
+CREATE SEQUENCE SEQ_MOVIMENTACAO
+START WITH 1
+INCREMENT BY 1;
+
+----------------------------------------------------------------
+-- SEQUENCE LOG
+----------------------------------------------------------------
+
+CREATE SEQUENCE SEQ_LOG
+START WITH 1
+INCREMENT BY 1;
+
+----------------------------------------------------------------
+-- PACKAGE SPEC
+----------------------------------------------------------------
+
+CREATE OR REPLACE PACKAGE PKG_BANCO AS
+
+    ----------------------------------------------------------------
+    -- CLIENTE
+    ----------------------------------------------------------------
+
+    PROCEDURE CADASTRAR_CLIENTE(
+        P_ID_CLIENTE NUMBER,
+        P_NOME VARCHAR2,
+        P_CPF VARCHAR2,
+        P_TELEFONE VARCHAR2,
+        P_EMAIL VARCHAR2
+    );
+
+    PROCEDURE ATUALIZAR_CLIENTE(
+        P_ID_CLIENTE NUMBER,
+        P_NOME VARCHAR2,
+        P_CPF VARCHAR2,
+        P_TELEFONE VARCHAR2,
+        P_EMAIL VARCHAR2
+    );
+
+    PROCEDURE DELETAR_CLIENTE(
+        P_ID_CLIENTE NUMBER
+    );
+
+    PROCEDURE LISTAR_CLIENTES;
+
+    PROCEDURE BUSCAR_CLIENTE_POR_ID(
+        P_ID_CLIENTE NUMBER
+    );
+
+    ----------------------------------------------------------------
+    -- CONTA
+    ----------------------------------------------------------------
+
+    PROCEDURE CADASTRAR_CONTA(
+        P_ID_CONTA NUMBER,
+        P_ID_CLIENTE NUMBER,
+        P_SALDO NUMBER
+    );
+
+    PROCEDURE ATUALIZAR_CONTA(
+        P_ID_CONTA NUMBER,
+        P_SALDO NUMBER
+    );
+
+    PROCEDURE DELETAR_CONTA(
+        P_ID_CONTA NUMBER
+    );
+
+    PROCEDURE LISTAR_CONTAS;
+
+    PROCEDURE BUSCAR_CONTA_POR_ID(
+        P_ID_CONTA NUMBER
+    );
+
+    ----------------------------------------------------------------
+    -- OPERAÇÕES BANCÁRIAS
+    ----------------------------------------------------------------
+
+    PROCEDURE REALIZAR_DEPOSITO(
+        P_ID_CONTA NUMBER,
+        P_VALOR NUMBER
+    );
+
+    PROCEDURE REALIZAR_SAQUE(
+        P_ID_CONTA NUMBER,
+        P_VALOR NUMBER
+    );
+
+    PROCEDURE TRANSFERIR(
+        P_CONTA_ORIGEM NUMBER,
+        P_CONTA_DESTINO NUMBER,
+        P_VALOR NUMBER
+    );
+
+    FUNCTION CONSULTAR_SALDO(
+        P_ID_CONTA NUMBER
+    ) RETURN NUMBER;
+
+END PKG_BANCO;
+/
+
+----------------------------------------------------------------
+-- PACKAGE BODY
+----------------------------------------------------------------
+
+CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
+
+    ----------------------------------------------------------------
+    -- CADASTRAR CLIENTE
+    ----------------------------------------------------------------
+
+    PROCEDURE CADASTRAR_CLIENTE(
+        P_ID_CLIENTE NUMBER,
+        P_NOME VARCHAR2,
+        P_CPF VARCHAR2,
+        P_TELEFONE VARCHAR2,
+        P_EMAIL VARCHAR2
+    )
+    IS
+    BEGIN
+
+        INSERT INTO CLIENTE (
+            ID_CLIENTE,
+            NOME,
+            CPF,
+            TELEFONE,
+            EMAIL
+        )
+        VALUES (
+            P_ID_CLIENTE,
+            P_NOME,
+            P_CPF,
+            P_TELEFONE,
+            P_EMAIL
+        );
+
+        COMMIT;
+
+    END CADASTRAR_CLIENTE;
+
+    ----------------------------------------------------------------
+    -- ATUALIZAR CLIENTE
+    ----------------------------------------------------------------
+
+    PROCEDURE ATUALIZAR_CLIENTE(
+        P_ID_CLIENTE NUMBER,
+        P_NOME VARCHAR2,
+        P_CPF VARCHAR2,
+        P_TELEFONE VARCHAR2,
+        P_EMAIL VARCHAR2
+    )
+    IS
+    BEGIN
+
+        UPDATE CLIENTE
+        SET
+            NOME = P_NOME,
+            CPF = P_CPF,
+            TELEFONE = P_TELEFONE,
+            EMAIL = P_EMAIL
+        WHERE ID_CLIENTE = P_ID_CLIENTE;
+
+        COMMIT;
+
+    END ATUALIZAR_CLIENTE;
+
+    ----------------------------------------------------------------
+    -- DELETAR CLIENTE
+    ----------------------------------------------------------------
+
+    PROCEDURE DELETAR_CLIENTE(
+        P_ID_CLIENTE NUMBER
+    )
+    IS
+    BEGIN
+
+        DELETE FROM MOVIMENTACAO
+        WHERE ID_CONTA IN (
+            SELECT ID_CONTA
+            FROM CONTA
+            WHERE ID_CLIENTE = P_ID_CLIENTE
+        );
+
+        DELETE FROM CONTA
+        WHERE ID_CLIENTE = P_ID_CLIENTE;
+
+        DELETE FROM CLIENTE
+        WHERE ID_CLIENTE = P_ID_CLIENTE;
+
+        COMMIT;
+
+    END DELETAR_CLIENTE;
+
+    ----------------------------------------------------------------
+    -- LISTAR CLIENTES
+    ----------------------------------------------------------------
+
+    PROCEDURE LISTAR_CLIENTES
+    IS
+    BEGIN
+
+        FOR C IN (
+            SELECT *
+            FROM CLIENTE
+        )
+        LOOP
+
+            DBMS_OUTPUT.PUT_LINE(
+                'ID: ' || C.ID_CLIENTE ||
+                ' | NOME: ' || C.NOME ||
+                ' | CPF: ' || C.CPF
+            );
+
+        END LOOP;
+
+    END LISTAR_CLIENTES;
+
+    ----------------------------------------------------------------
+    -- BUSCAR CLIENTE POR ID
+    ----------------------------------------------------------------
+
+    PROCEDURE BUSCAR_CLIENTE_POR_ID(
+        P_ID_CLIENTE NUMBER
+    )
+    IS
+        V_NOME CLIENTE.NOME%TYPE;
+        V_CPF CLIENTE.CPF%TYPE;
+    BEGIN
+
+        SELECT NOME, CPF
+        INTO V_NOME, V_CPF
+        FROM CLIENTE
+        WHERE ID_CLIENTE = P_ID_CLIENTE;
+
+        DBMS_OUTPUT.PUT_LINE(
+            'NOME: ' || V_NOME ||
+            ' | CPF: ' || V_CPF
+        );
+
+    END BUSCAR_CLIENTE_POR_ID;
+
+    ----------------------------------------------------------------
+    -- CADASTRAR CONTA
+    ----------------------------------------------------------------
+
+    PROCEDURE CADASTRAR_CONTA(
+        P_ID_CONTA NUMBER,
+        P_ID_CLIENTE NUMBER,
+        P_SALDO NUMBER
+    )
+    IS
+    BEGIN
+
+        INSERT INTO CONTA (
+            ID_CONTA,
+            ID_CLIENTE,
+            SALDO
+        )
+        VALUES (
+            P_ID_CONTA,
+            P_ID_CLIENTE,
+            P_SALDO
+        );
+
+        COMMIT;
+
+    END CADASTRAR_CONTA;
+
+    ----------------------------------------------------------------
+    -- ATUALIZAR CONTA
+    ----------------------------------------------------------------
+
+    PROCEDURE ATUALIZAR_CONTA(
+        P_ID_CONTA NUMBER,
+        P_SALDO NUMBER
+    )
+    IS
+    BEGIN
+
+        UPDATE CONTA
+        SET SALDO = P_SALDO
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        COMMIT;
+
+    END ATUALIZAR_CONTA;
+
+    ----------------------------------------------------------------
+    -- DELETAR CONTA
+    ----------------------------------------------------------------
+
+    PROCEDURE DELETAR_CONTA(
+        P_ID_CONTA NUMBER
+    )
+    IS
+    BEGIN
+
+        DELETE FROM MOVIMENTACAO
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        DELETE FROM CONTA
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        COMMIT;
+
+    END DELETAR_CONTA;
+
+    ----------------------------------------------------------------
+    -- LISTAR CONTAS
+    ----------------------------------------------------------------
+
+    PROCEDURE LISTAR_CONTAS
+    IS
+    BEGIN
+
+        FOR C IN (
+            SELECT *
+            FROM CONTA
+        )
+        LOOP
+
+            DBMS_OUTPUT.PUT_LINE(
+                'CONTA: ' || C.ID_CONTA ||
+                ' | CLIENTE: ' || C.ID_CLIENTE ||
+                ' | SALDO: ' || C.SALDO
+            );
+
+        END LOOP;
+
+    END LISTAR_CONTAS;
+
+    ----------------------------------------------------------------
+    -- BUSCAR CONTA POR ID
+    ----------------------------------------------------------------
+
+    PROCEDURE BUSCAR_CONTA_POR_ID(
+        P_ID_CONTA NUMBER
+    )
+    IS
+        V_SALDO NUMBER;
+    BEGIN
+
+        SELECT SALDO
+        INTO V_SALDO
+        FROM CONTA
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        DBMS_OUTPUT.PUT_LINE(
+            'SALDO: ' || V_SALDO
+        );
+
+    END BUSCAR_CONTA_POR_ID;
+
+    ----------------------------------------------------------------
+    -- DEPÓSITO
+    ----------------------------------------------------------------
+
+    PROCEDURE REALIZAR_DEPOSITO(
+        P_ID_CONTA NUMBER,
+        P_VALOR NUMBER
+    )
+    IS
+    BEGIN
+
+        UPDATE CONTA
+        SET SALDO = SALDO + P_VALOR
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        INSERT INTO MOVIMENTACAO
+        VALUES (
+            SEQ_MOVIMENTACAO.NEXTVAL,
+            P_ID_CONTA,
+            'DEPOSITO',
+            P_VALOR,
+            SYSDATE
+        );
+
+        COMMIT;
+
+    END REALIZAR_DEPOSITO;
+
+    ----------------------------------------------------------------
+    -- SAQUE
+    ----------------------------------------------------------------
+
+    PROCEDURE REALIZAR_SAQUE(
+        P_ID_CONTA NUMBER,
+        P_VALOR NUMBER
+    )
+    IS
+        V_SALDO NUMBER;
+    BEGIN
+
+        SELECT SALDO
+        INTO V_SALDO
+        FROM CONTA
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        IF V_SALDO >= P_VALOR THEN
+
+            UPDATE CONTA
+            SET SALDO = SALDO - P_VALOR
+            WHERE ID_CONTA = P_ID_CONTA;
+
+            INSERT INTO MOVIMENTACAO
+            VALUES (
+                SEQ_MOVIMENTACAO.NEXTVAL,
+                P_ID_CONTA,
+                'SAQUE',
+                P_VALOR,
+                SYSDATE
+            );
+
+            COMMIT;
+
+        ELSE
+
+            RAISE_APPLICATION_ERROR(
+                -20001,
+                'Saldo insuficiente'
+            );
+
+        END IF;
+
+    END REALIZAR_SAQUE;
+
+    ----------------------------------------------------------------
+    -- TRANSFERÊNCIA
+    ----------------------------------------------------------------
+
+    PROCEDURE TRANSFERIR(
+        P_CONTA_ORIGEM NUMBER,
+        P_CONTA_DESTINO NUMBER,
+        P_VALOR NUMBER
+    )
+    IS
+    BEGIN
+
+        REALIZAR_SAQUE(
+            P_CONTA_ORIGEM,
+            P_VALOR
+        );
+
+        REALIZAR_DEPOSITO(
+            P_CONTA_DESTINO,
+            P_VALOR
+        );
+
+    END TRANSFERIR;
+
+    ----------------------------------------------------------------
+    -- CONSULTAR SALDO
+    ----------------------------------------------------------------
+
+    FUNCTION CONSULTAR_SALDO(
+        P_ID_CONTA NUMBER
+    )
+    RETURN NUMBER
+    IS
+        V_SALDO NUMBER;
+    BEGIN
+
+        SELECT SALDO
+        INTO V_SALDO
+        FROM CONTA
+        WHERE ID_CONTA = P_ID_CONTA;
+
+        RETURN V_SALDO;
+
+    END CONSULTAR_SALDO;
+
+END PKG_BANCO;
+/
+
+----------------------------------------------------------------
+-- TRIGGER LOG
+----------------------------------------------------------------
+
+CREATE OR REPLACE TRIGGER TRG_LOG_OPERACOES
+AFTER INSERT OR UPDATE OR DELETE
+ON CONTA
+FOR EACH ROW
+BEGIN
+
+    ----------------------------------------------------------------
+    -- INSERT
+    ----------------------------------------------------------------
+
+    IF INSERTING THEN
+
+        INSERT INTO LOG_OPERACOES (
+            ID_LOG,
+            USUARIO_BANCO,
+            OPERACAO,
+            ID_CONTA,
+            DATA_LOG
+        )
+        VALUES (
+            SEQ_LOG.NEXTVAL,
+            USER,
+            'INSERT',
+            :NEW.ID_CONTA,
+            SYSDATE
+        );
+
+    END IF;
+
+    ----------------------------------------------------------------
+    -- UPDATE
+    ----------------------------------------------------------------
+
+    IF UPDATING THEN
+
+        INSERT INTO LOG_OPERACOES (
+            ID_LOG,
+            USUARIO_BANCO,
+            OPERACAO,
+            ID_CONTA,
+            DATA_LOG
+        )
+        VALUES (
+            SEQ_LOG.NEXTVAL,
+            USER,
+            'UPDATE',
+            :NEW.ID_CONTA,
+            SYSDATE
+        );
+
+    END IF;
+
+    ----------------------------------------------------------------
+    -- DELETE
+    ----------------------------------------------------------------
+
+    IF DELETING THEN
+
+        INSERT INTO LOG_OPERACOES (
+            ID_LOG,
+            USUARIO_BANCO,
+            OPERACAO,
+            ID_CONTA,
+            DATA_LOG
+        )
+        VALUES (
+            SEQ_LOG.NEXTVAL,
+            USER,
+            'DELETE',
+            :OLD.ID_CONTA,
+            SYSDATE
+        );
+
+    END IF;
+
+END;
+/
+
+----------------------------------------------------------------
+-- CADASTRO CLIENTES
+----------------------------------------------------------------
+
+BEGIN
+
+    PKG_BANCO.CADASTRAR_CLIENTE(
+        1,
+        'Erik Menezes',
+        '123.456.789-00',
+        '81985084008',
+        'erikcarlos.menezes@gmail.com'
+    );
+
+    PKG_BANCO.CADASTRAR_CLIENTE(
+        2,
+        'Maria Silva',
+        '987.654.321-00',
+        '81985111111',
+        'maria@gmail.com'
+    );
+
+    PKG_BANCO.CADASTRAR_CLIENTE(
+        3,
+        'Daniel Duarte',
+        '154.412.544-59',
+        '8183066814',
+        'danielduarteld0@gmail.com'
+    );
+
+    PKG_BANCO.CADASTRAR_CLIENTE(
+        4,
+        'Camila Vitoria',
+        '153.510.544-50',
+        '81985343405',
+        'camila06vitoria14@gmail.com'
+    );
+
+END;
+/
+
+----------------------------------------------------------------
+-- CADASTRO CONTAS
+----------------------------------------------------------------
+
+BEGIN
+
+    PKG_BANCO.CADASTRAR_CONTA(
+        1001,
+        1,
+        1500
+    );
+
+    PKG_BANCO.CADASTRAR_CONTA(
+        1002,
+        2,
+        2000
+    );
+
+    PKG_BANCO.CADASTRAR_CONTA(
+        1003,
+        3,
+        3000
+    );
+
+    PKG_BANCO.CADASTRAR_CONTA(
+        1004,
+        4,
+        4000
+    );
+
+END;
+/
