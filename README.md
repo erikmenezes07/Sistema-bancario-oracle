@@ -6,6 +6,10 @@ Projeto Disciplina de Banco de Dados Uninassau
 ```mermaid
 erDiagram
 
+    CLIENTE ||--o{ CONTA : possui
+    CONTA ||--o{ MOVIMENTACAO : realiza
+    CONTA ||--o{ LOG_OPERACOES : gera
+
     CLIENTE {
         NUMBER ID_CLIENTE PK
         VARCHAR2 NOME
@@ -17,7 +21,6 @@ erDiagram
     CONTA {
         NUMBER ID_CONTA PK
         NUMBER ID_CLIENTE FK
-        VARCHAR2 TIPO_CONTA
         NUMBER SALDO
     }
 
@@ -29,14 +32,12 @@ erDiagram
         DATE DATA_MOVIMENTACAO
     }
 
-    USUARIO_ADMIN {
-        NUMBER ID_ADMIN PK
-        VARCHAR2 NOME
-        VARCHAR2 LOGIN
-        VARCHAR2 SENHA
+    LOG_OPERACOES {
+        NUMBER ID_LOG PK
+        VARCHAR2 USUARIO_BANCO
+        VARCHAR2 OPERACAO
+        NUMBER ID_CONTA
+        DATE DATA_LOG
     }
- ```
-
-    CLIENTE ||--o{ CONTA : possui
-    CONTA ||--o{ MOVIMENTACAO : realiza
+``TACAO : realiza
 ```
