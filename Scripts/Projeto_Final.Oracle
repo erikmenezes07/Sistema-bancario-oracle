@@ -612,6 +612,26 @@ END;
 /
 
 ----------------------------------------------------------------
+-- TRIGGER VERIFICAR SALDO (IMPEDE SALDO NEGATIVO)
+----------------------------------------------------------------
+
+CREATE OR REPLACE TRIGGER TRG_VERIFICAR_SALDO
+BEFORE UPDATE OF SALDO
+ON CONTA
+FOR EACH ROW
+BEGIN
+
+    IF :NEW.SALDO < 0 THEN
+        RAISE_APPLICATION_ERROR(
+            -20002,
+            'Saldo nao pode ser negativo'
+        );
+    END IF;
+
+END;
+/
+
+----------------------------------------------------------------
 -- CADASTRO CLIENTES
 ----------------------------------------------------------------
 
