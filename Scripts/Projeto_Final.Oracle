@@ -70,17 +70,23 @@ START WITH 1
 INCREMENT BY 1;
 
 ----------------------------------------------------------------
+-- SEQUENCE CLIENTE E CONTA
+----------------------------------------------------------------
+
+CREATE SEQUENCE SEQ_CLIENTE START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE SEQ_CONTA START WITH 1001 INCREMENT BY 1;
+
+----------------------------------------------------------------
 -- PACKAGE SPEC
 ----------------------------------------------------------------
 
 CREATE OR REPLACE PACKAGE PKG_BANCO AS
 
-    ----------------------------------------------------------------
-    -- CLIENTE
-    ----------------------------------------------------------------
+----------------------------------------------------------------
+-- CLIENTE
+----------------------------------------------------------------
 
     PROCEDURE CADASTRAR_CLIENTE(
-        P_ID_CLIENTE NUMBER,
         P_NOME VARCHAR2,
         P_CPF VARCHAR2,
         P_TELEFONE VARCHAR2,
@@ -110,7 +116,6 @@ CREATE OR REPLACE PACKAGE PKG_BANCO AS
     ----------------------------------------------------------------
 
     PROCEDURE CADASTRAR_CONTA(
-        P_ID_CONTA NUMBER,
         P_ID_CLIENTE NUMBER,
         P_SALDO NUMBER
     );
@@ -163,12 +168,11 @@ END PKG_BANCO;
 
 CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
 
-    ----------------------------------------------------------------
-    -- CADASTRAR CLIENTE
-    ----------------------------------------------------------------
+----------------------------------------------------------------
+-- CADASTRAR CLIENTE
+----------------------------------------------------------------
 
     PROCEDURE CADASTRAR_CLIENTE(
-        P_ID_CLIENTE NUMBER,
         P_NOME VARCHAR2,
         P_CPF VARCHAR2,
         P_TELEFONE VARCHAR2,
@@ -185,7 +189,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
             EMAIL
         )
         VALUES (
-            P_ID_CLIENTE,
+            SEQ_CLIENTE.NEXTVAL,
             P_NOME,
             P_CPF,
             P_TELEFONE,
@@ -302,7 +306,6 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     ----------------------------------------------------------------
 
     PROCEDURE CADASTRAR_CONTA(
-        P_ID_CONTA NUMBER,
         P_ID_CLIENTE NUMBER,
         P_SALDO NUMBER
     )
@@ -315,7 +318,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
             SALDO
         )
         VALUES (
-            P_ID_CONTA,
+            SEQ_CONTA.NEXTVAL,
             P_ID_CLIENTE,
             P_SALDO
         );
@@ -635,7 +638,6 @@ END;
 BEGIN
 
     PKG_BANCO.CADASTRAR_CLIENTE(
-        1,
         'Erik Menezes',
         '123.456.789-00',
         '81985084008',
@@ -643,7 +645,6 @@ BEGIN
     );
 
     PKG_BANCO.CADASTRAR_CLIENTE(
-        2,
         'Maria Silva',
         '987.654.321-00',
         '81985111111',
@@ -651,7 +652,6 @@ BEGIN
     );
 
     PKG_BANCO.CADASTRAR_CLIENTE(
-        3,
         'Daniel Duarte',
         '154.412.544-59',
         '8183066814',
@@ -659,7 +659,6 @@ BEGIN
     );
 
     PKG_BANCO.CADASTRAR_CLIENTE(
-        4,
         'Camila Vitoria',
         '153.510.544-50',
         '81985343405',
@@ -668,35 +667,33 @@ BEGIN
 
 END;
 /
-
 ----------------------------------------------------------------
 -- CADASTRO CONTAS
 ----------------------------------------------------------------
 
 BEGIN
-
     PKG_BANCO.CADASTRAR_CONTA(
-        1001,
         1,
         1500
     );
 
     PKG_BANCO.CADASTRAR_CONTA(
-        1002,
         2,
         2000
     );
 
     PKG_BANCO.CADASTRAR_CONTA(
-        1003,
         3,
         3000
     );
 
     PKG_BANCO.CADASTRAR_CONTA(
-        1004,
         4,
         4000
+    );
+    PKG_BANCO.CADASTRAR_CONTA(
+        5,
+        2100
     );
 
 END;
