@@ -398,15 +398,17 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
         P_ID_CONTA NUMBER
     )
     IS
+        V_NOME VARCHAR2(100);
         V_SALDO NUMBER;
     BEGIN
 
-        SELECT SALDO
-        INTO V_SALDO
+        SELECT NOME, SALDO
+        INTO V_NOME, V_SALDO
         FROM CONTA
         WHERE ID_CONTA = P_ID_CONTA;
 
         DBMS_OUTPUT.PUT_LINE(
+            'NOME; ' || V_NOME
             'SALDO: ' || V_SALDO
         );
 
