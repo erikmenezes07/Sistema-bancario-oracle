@@ -409,6 +409,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
 
         DBMS_OUTPUT.PUT_LINE(
             'NOME; ' || V_NOME
+        );
+         DBMS_OUTPUT.PUT_LINE(
             'SALDO: ' || V_SALDO
         );
 
