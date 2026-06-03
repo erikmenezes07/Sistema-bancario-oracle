@@ -17,8 +17,9 @@ CREATE TABLE CLIENTE (
 CREATE TABLE CONTA (
     ID_CONTA NUMBER PRIMARY KEY,
     ID_CLIENTE NUMBER,
+    TIPO_CONTA VARCHAR2(20),
     SALDO NUMBER(10,2),
-    LIMITE_ESPECIAL NUMBER(10,2) DEFAULT 0,
+    LIMITE_ESPECIAL NUMBER(10,2),
 
     CONSTRAINT FK_CLIENTE
     FOREIGN KEY (ID_CLIENTE)
@@ -70,23 +71,17 @@ START WITH 1
 INCREMENT BY 1;
 
 ----------------------------------------------------------------
--- SEQUENCE CLIENTE E CONTA
-----------------------------------------------------------------
-
-CREATE SEQUENCE SEQ_CLIENTE START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE SEQ_CONTA START WITH 1001 INCREMENT BY 1;
-
-----------------------------------------------------------------
 -- PACKAGE SPEC
 ----------------------------------------------------------------
 
 CREATE OR REPLACE PACKAGE PKG_BANCO AS
 
-----------------------------------------------------------------
--- CLIENTE
-----------------------------------------------------------------
+    ----------------------------------------------------------------
+    -- CLIENTE
+    ----------------------------------------------------------------
 
     PROCEDURE CADASTRAR_CLIENTE(
+        P_ID_CLIENTE NUMBER,
         P_NOME VARCHAR2,
         P_CPF VARCHAR2,
         P_TELEFONE VARCHAR2,
@@ -111,13 +106,20 @@ CREATE OR REPLACE PACKAGE PKG_BANCO AS
         P_ID_CLIENTE NUMBER
     );
 
+    PROCEDURE BUSCAR_CLIENTE_COMPLETO(
+    P_ID_CLIENTE NUMBER
+    );
+
     ----------------------------------------------------------------
     -- CONTA
     ----------------------------------------------------------------
 
     PROCEDURE CADASTRAR_CONTA(
-        P_ID_CLIENTE NUMBER,
-        P_SALDO NUMBER
+    P_ID_CONTA NUMBER,
+    P_ID_CLIENTE NUMBER,
+    P_TIPO_CONTA VARCHAR2,
+    P_SALDO NUMBER,
+    P_LIMITE_ESPECIAL NUMBER
     );
 
     PROCEDURE ATUALIZAR_CONTA(
@@ -168,11 +170,12 @@ END PKG_BANCO;
 
 CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
 
-----------------------------------------------------------------
--- CADASTRAR CLIENTE
-----------------------------------------------------------------
+    ----------------------------------------------------------------
+    -- CADASTRAR CLIENTE
+    ----------------------------------------------------------------
 
     PROCEDURE CADASTRAR_CLIENTE(
+        P_ID_CLIENTE NUMBER,
         P_NOME VARCHAR2,
         P_CPF VARCHAR2,
         P_TELEFONE VARCHAR2,
@@ -189,7 +192,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
             EMAIL
         )
         VALUES (
-            SEQ_CLIENTE.NEXTVAL,
+            P_ID_CLIENTE,
             P_NOME,
             P_CPF,
             P_TELEFONE,
@@ -306,26 +309,33 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     ----------------------------------------------------------------
 
     PROCEDURE CADASTRAR_CONTA(
-        P_ID_CLIENTE NUMBER,
-        P_SALDO NUMBER
+    P_ID_CONTA NUMBER,
+    P_ID_CLIENTE NUMBER,
+    P_TIPO_CONTA VARCHAR2,
+    P_SALDO NUMBER,
+    P_LIMITE_ESPECIAL NUMBER
+)
+IS
+BEGIN
+
+    INSERT INTO CONTA (
+        ID_CONTA,
+        ID_CLIENTE,
+        TIPO_CONTA,
+        SALDO,
+        LIMITE_ESPECIAL
     )
-    IS
-    BEGIN
+    VALUES (
+        P_ID_CONTA,
+        P_ID_CLIENTE,
+        UPPER(P_TIPO_CONTA),
+        P_SALDO,
+        P_LIMITE_ESPECIAL
+    );
 
-        INSERT INTO CONTA (
-            ID_CONTA,
-            ID_CLIENTE,
-            SALDO
-        )
-        VALUES (
-            SEQ_CONTA.NEXTVAL,
-            P_ID_CLIENTE,
-            P_SALDO
-        );
+    COMMIT;
 
-        COMMIT;
-
-    END CADASTRAR_CONTA;
+END CADASTRAR_CONTA;
 
     ----------------------------------------------------------------
     -- ATUALIZAR CONTA
@@ -371,50 +381,54 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     ----------------------------------------------------------------
 
     PROCEDURE LISTAR_CONTAS
-    IS
-    BEGIN
+IS
+BEGIN
 
-        FOR C IN (
-            SELECT *
-            FROM CONTA
-        )
-        LOOP
+    FOR C IN (
+        SELECT *
+        FROM CONTA
+    )
+    LOOP
 
-            DBMS_OUTPUT.PUT_LINE(
-                'CONTA: ' || C.ID_CONTA ||
-                ' | CLIENTE: ' || C.ID_CLIENTE ||
-                ' | SALDO: ' || C.SALDO
-            );
+        DBMS_OUTPUT.PUT_LINE(
+            'CONTA: ' || C.ID_CONTA ||
+            ' | CLIENTE: ' || C.ID_CLIENTE ||
+            ' | TIPO: ' || C.TIPO_CONTA ||
+            ' | SALDO: ' || C.SALDO ||
+            ' | LIMITE: ' || C.LIMITE_ESPECIAL
+        );
 
-        END LOOP;
+    END LOOP;
 
-    END LISTAR_CONTAS;
+END LISTAR_CONTAS;
 
     ----------------------------------------------------------------
     -- BUSCAR CONTA POR ID
     ----------------------------------------------------------------
 
     PROCEDURE BUSCAR_CONTA_POR_ID(
-        P_ID_CONTA NUMBER
-    )
-    IS
-        V_SALDO NUMBER;
-        V_LIMITE_ESPECIAL NUMBER;
-    BEGIN
+    P_ID_CONTA NUMBER
+)
+IS
+BEGIN
 
-        SELECT SALDO, LIMITE_ESPECIAL
-        INTO V_SALDO, V_LIMITE_ESPECIAL
+    FOR C IN (
+        SELECT *
         FROM CONTA
-        WHERE ID_CONTA = P_ID_CONTA;
+        WHERE ID_CONTA = P_ID_CONTA
+    )
+    LOOP
 
         DBMS_OUTPUT.PUT_LINE(
-            'SALDO: ' || V_SALDO
-        );
-         DBMS_OUTPUT.PUT_LINE(
-            'LIMITE_ESPECIAL: ' || V_LIMITE_ESPECIAL
+            'CONTA: ' || C.ID_CONTA ||
+            ' | TIPO: ' || C.TIPO_CONTA ||
+            ' | SALDO: ' || C.SALDO ||
+            ' | LIMITE: ' || C.LIMITE_ESPECIAL
         );
 
-    END BUSCAR_CONTA_POR_ID;
+    END LOOP;
+
+END BUSCAR_CONTA_POR_ID;
 
     ----------------------------------------------------------------
     -- DEPÓSITO
@@ -431,7 +445,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
         SET SALDO = SALDO + P_VALOR
         WHERE ID_CONTA = P_ID_CONTA;
 
-        INSERT INTO MOVIMENTACAO (ID_MOVIMENTACAO, ID_CONTA, TIPO_MOVIMENTACAO, VALOR, DATA_MOVIMENTACAO)
+        INSERT INTO MOVIMENTACAO
         VALUES (
             SEQ_MOVIMENTACAO.NEXTVAL,
             P_ID_CONTA,
@@ -448,44 +462,53 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     -- SAQUE
     ----------------------------------------------------------------
 
-   PROCEDURE REALIZAR_SAQUE(
-        P_ID_CONTA NUMBER,
-        P_VALOR NUMBER
-    )
-    IS
-        V_SALDO NUMBER;
-        V_LIMITE NUMBER;
-    BEGIN
-        SELECT SALDO, LIMITE_ESPECIAL
-        INTO V_SALDO, V_LIMITE
-        FROM CONTA
+    PROCEDURE REALIZAR_SAQUE(
+    P_ID_CONTA NUMBER,
+    P_VALOR NUMBER
+)
+IS
+
+    V_SALDO NUMBER;
+    V_LIMITE NUMBER;
+
+BEGIN
+
+    SELECT
+        SALDO,
+        LIMITE_ESPECIAL
+    INTO
+        V_SALDO,
+        V_LIMITE
+    FROM CONTA
+    WHERE ID_CONTA = P_ID_CONTA;
+
+    IF (V_SALDO + V_LIMITE) >= P_VALOR THEN
+
+        UPDATE CONTA
+        SET SALDO = SALDO - P_VALOR
         WHERE ID_CONTA = P_ID_CONTA;
 
-        IF (V_SALDO + V_LIMITE) >= P_VALOR THEN
+        INSERT INTO MOVIMENTACAO
+        VALUES (
+            SEQ_MOVIMENTACAO.NEXTVAL,
+            P_ID_CONTA,
+            'SAQUE',
+            P_VALOR,
+            SYSDATE
+        );
 
-            UPDATE CONTA
-            SET SALDO = SALDO - P_VALOR
-            WHERE ID_CONTA = P_ID_CONTA;
+        COMMIT;
 
-            INSERT INTO MOVIMENTACAO (ID_MOVIMENTACAO, ID_CONTA, TIPO_MOVIMENTACAO, VALOR, DATA_MOVIMENTACAO)
-            VALUES (
-                SEQ_MOVIMENTACAO.NEXTVAL,
-                P_ID_CONTA,
-                'SAQUE',
-                P_VALOR,
-                SYSDATE
-            );
+    ELSE
 
-            COMMIT;
+        RAISE_APPLICATION_ERROR(
+            -20001,
+            'SALDO E LIMITE INSUFICIENTES'
+        );
 
-        ELSE
-            RAISE_APPLICATION_ERROR(
-                -20001,
-                'Saldo e Limite de Cheque Especial insuficientes.'
-            );
-        END IF;
+    END IF;
 
-    END REALIZAR_SAQUE;
+END REALIZAR_SAQUE;
 
     ----------------------------------------------------------------
     -- TRANSFERÊNCIA
@@ -510,6 +533,52 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
         );
 
     END TRANSFERIR;
+
+    ----------------------------------------------------------------
+    -- BUSCAR CLIENTE COMPLETO
+    ----------------------------------------------------------------
+PROCEDURE BUSCAR_CLIENTE_COMPLETO(
+    P_ID_CLIENTE NUMBER
+)
+IS
+BEGIN
+
+    FOR DADOS IN (
+
+        SELECT
+            C.ID_CLIENTE,
+            C.NOME,
+            C.CPF,
+            C.TELEFONE,
+            C.EMAIL,
+            CT.ID_CONTA,
+            CT.TIPO_CONTA,
+            CT.SALDO,
+            CT.LIMITE_ESPECIAL
+
+        FROM CLIENTE C
+        LEFT JOIN CONTA CT
+            ON C.ID_CLIENTE = CT.ID_CLIENTE
+
+        WHERE C.ID_CLIENTE = P_ID_CLIENTE
+
+    )
+    LOOP
+
+        DBMS_OUTPUT.PUT_LINE(
+            'CLIENTE: ' || DADOS.NOME ||
+            ' | CPF: ' || DADOS.CPF ||
+            ' | TELEFONE: ' || DADOS.TELEFONE ||
+            ' | EMAIL: ' || DADOS.EMAIL ||
+            ' | CONTA: ' || DADOS.ID_CONTA ||
+            ' | TIPO: ' || DADOS.TIPO_CONTA ||
+            ' | SALDO: ' || DADOS.SALDO ||
+            ' | LIMITE: ' || DADOS.LIMITE_ESPECIAL
+        );
+
+    END LOOP;
+
+END BUSCAR_CLIENTE_COMPLETO;
 
     ----------------------------------------------------------------
     -- CONSULTAR SALDO
@@ -618,30 +687,13 @@ END;
 /
 
 ----------------------------------------------------------------
--- TRIGGER VERIFICAR SALDO
-----------------------------------------------------------------
-
-CREATE OR REPLACE TRIGGER TRG_VERIFICAR_SALDO
-BEFORE UPDATE OF SALDO
-ON CONTA
-FOR EACH ROW
-BEGIN
-    IF :NEW.SALDO < (:OLD.LIMITE_ESPECIAL * -1) THEN
-        RAISE_APPLICATION_ERROR(
-            -20002,
-            'Operacao cancelada: Valor excede o limite do cheque especial disponível.'
-        );
-    END IF;
-END;
-/
-
-----------------------------------------------------------------
 -- CADASTRO CLIENTES
 ----------------------------------------------------------------
 
 BEGIN
 
     PKG_BANCO.CADASTRAR_CLIENTE(
+        1,
         'Erik Menezes',
         '123.456.789-00',
         '81985084008',
@@ -649,6 +701,7 @@ BEGIN
     );
 
     PKG_BANCO.CADASTRAR_CLIENTE(
+        2,
         'Maria Silva',
         '987.654.321-00',
         '81985111111',
@@ -656,6 +709,7 @@ BEGIN
     );
 
     PKG_BANCO.CADASTRAR_CLIENTE(
+        3,
         'Daniel Duarte',
         '154.412.544-59',
         '8183066814',
@@ -663,48 +717,54 @@ BEGIN
     );
 
     PKG_BANCO.CADASTRAR_CLIENTE(
+        4,
         'Camila Vitoria',
         '153.510.544-50',
         '81985343405',
         'camila06vitoria14@gmail.com'
     );
 
-    PKG_BANCO.CADASTRAR_CLIENTE(
-        'Thales Tadeu',
-        '321.654.987-10',
-        '81974837264',
-        'thalestadeu@gmail.com'
-    );
-
 END;
 /
+
 ----------------------------------------------------------------
 -- CADASTRO CONTAS
 ----------------------------------------------------------------
 
 BEGIN
+
+    BEGIN
+
     PKG_BANCO.CADASTRAR_CONTA(
+        1001,
         1,
-        1500
+        'CORRENTE',
+        1500,
+        1000
     );
 
     PKG_BANCO.CADASTRAR_CONTA(
+        1002,
         2,
+        'POUPANCA',
+        2000,
+        0
+    );
+
+    PKG_BANCO.CADASTRAR_CONTA(
+        1003,
+        3,
+        'CORRENTE',
+        3000,
         2000
     );
 
     PKG_BANCO.CADASTRAR_CONTA(
-        3,
-        3000
-    );
-
-    PKG_BANCO.CADASTRAR_CONTA(
+        1004,
         4,
-        4000
-    );
-    PKG_BANCO.CADASTRAR_CONTA(
-        5,
-        2100
+        'POUPANCA',
+        4000,
+        0
     );
 
 END;
