@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- LIMPEZA DE OBJETOS ANTERIORES (Para execução limpa do script)
+-- LIMPEZA DE OBJETOS ANTERIORES (Para execução limpa do guião)
 ----------------------------------------------------------------
 DECLARE
     PROCEDURE dropar_objeto(p_tipo VARCHAR2, p_nome VARCHAR2) IS
@@ -30,7 +30,7 @@ END;
 CREATE TABLE CLIENTE (
     ID_CLIENTE NUMBER PRIMARY KEY,
     NOME VARCHAR2(100),
-    CPF VARCHAR2(14) UNIQUE, -- CPF Único para permitir a busca segura na carga de dados
+    CPF VARCHAR2(14) UNIQUE, -- CPF Único para permitir a pesquisa segura na carga de dados
     TELEFONE VARCHAR2(20),
     EMAIL VARCHAR2(100)
 );
@@ -77,7 +77,7 @@ CREATE TABLE LOG_OPERACOES (
 );
 
 ----------------------------------------------------------------
--- SEQUENCES (Geração automática de IDs)
+-- SEQUENCES (Geração automática de chaves primárias)
 ----------------------------------------------------------------
 CREATE SEQUENCE SEQ_MOVIMENTACAO START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE SEQ_LOG START WITH 1 INCREMENT BY 1;
@@ -85,11 +85,11 @@ CREATE SEQUENCE SEQ_CLIENTE START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE SEQ_CONTA START WITH 1001 INCREMENT BY 1;
 
 ----------------------------------------------------------------
--- PACKAGE SPEC
+-- PACKAGE SPEC (Definição das interfaces públicas)
 ----------------------------------------------------------------
 CREATE OR REPLACE PACKAGE PKG_BANCO AS
 
-    -- CLIENTE
+    -- GESTÃO DE CLIENTES
     PROCEDURE CADASTRAR_CLIENTE(
         P_NOME VARCHAR2,
         P_CPF VARCHAR2,
@@ -115,12 +115,12 @@ CREATE OR REPLACE PACKAGE PKG_BANCO AS
         P_ID_CLIENTE NUMBER
     );
 
-    -- NOVA CONSULTA UNIFICADA (Melhor do seu código!)
+    -- CONSULTA COMPLETA UNIFICADA (Com associação de contas)
     PROCEDURE BUSCAR_CLIENTE_COMPLETO(
         P_ID_CLIENTE NUMBER
     );
 
-    -- CONTA
+    -- GESTÃO DE CONTAS
     PROCEDURE CADASTRAR_CONTA(
         P_ID_CLIENTE NUMBER,
         P_TIPO_CONTA VARCHAR2,
@@ -148,6 +148,7 @@ CREATE OR REPLACE PACKAGE PKG_BANCO AS
         P_VALOR NUMBER
     );
 
+    -- Realiza levantamentos de fundos (saques)
     PROCEDURE REALIZAR_SAQUE(
         P_ID_CONTA NUMBER,
         P_VALOR NUMBER
@@ -167,12 +168,12 @@ END PKG_BANCO;
 /
 
 ----------------------------------------------------------------
--- PACKAGE BODY
+-- PACKAGE BODY (Implementação das regras de negócio)
 ----------------------------------------------------------------
 CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
 
     ------------------------------------------------------------
-    -- CADASTRAR CLIENTE (Com Sequence)
+    -- REGISTAR CLIENTE
     ------------------------------------------------------------
     PROCEDURE CADASTRAR_CLIENTE(
         P_NOME VARCHAR2,
@@ -202,7 +203,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     END ATUALIZAR_CLIENTE;
 
     ------------------------------------------------------------
-    -- DELETAR CLIENTE (Cascata manual de segurança)
+    -- DELETAR CLIENTE (Exclusão em cascata controlada)
     ------------------------------------------------------------
     PROCEDURE DELETAR_CLIENTE(
         P_ID_CLIENTE NUMBER
@@ -248,11 +249,11 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
         DBMS_OUTPUT.PUT_LINE('NOME: ' || V_NOME || ' | CPF: ' || V_CPF);
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            DBMS_OUTPUT.PUT_LINE('Erro: Cliente com ID ' || P_ID_CLIENTE || ' não existe.');
+            DBMS_OUTPUT.PUT_LINE('Erro: O cliente com ID ' || P_ID_CLIENTE || ' não existe.');
     END BUSCAR_CLIENTE_POR_ID;
 
     ------------------------------------------------------------
-    -- BUSCAR CLIENTE COMPLETO (Unificada com LEFT JOIN)
+    -- BUSCAR CLIENTE COMPLETO (Relatório consolidado com LEFT JOIN)
     ------------------------------------------------------------
     PROCEDURE BUSCAR_CLIENTE_COMPLETO(
         P_ID_CLIENTE NUMBER
@@ -275,8 +276,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
                 DBMS_OUTPUT.PUT_LINE(
                     '   -> CONTA: ' || DADOS.ID_CONTA || 
                     ' | TIPO: ' || DADOS.TIPO_CONTA ||
-                    ' | SALDO: R$ ' || TO_CHAR(DADOS.SALDO, '999G999D99') ||
-                    ' | LIMITE CHEQUE: R$ ' || TO_CHAR(DADOS.LIMITE_ESPECIAL, '999G999D99')
+                    ' | SALDO: R$ ' || TO_CHAR(DADOS.SALDO, 'FM999G990D00') ||
+                    ' | LIMITE DISPONÍVEL: R$ ' || TO_CHAR(DADOS.LIMITE_ESPECIAL, 'FM999G990D00')
                 );
             ELSE
                 DBMS_OUTPUT.PUT_LINE('   -> Nenhuma conta associada a este cliente.');
@@ -284,12 +285,12 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
         END LOOP;
 
         IF NOT V_ENCONTRADO THEN
-            DBMS_OUTPUT.PUT_LINE('Erro: Cliente com ID ' || P_ID_CLIENTE || ' não foi encontrado.');
+            DBMS_OUTPUT.PUT_LINE('Erro: O cliente com ID ' || P_ID_CLIENTE || ' não foi encontrado.');
         END IF;
     END BUSCAR_CLIENTE_COMPLETO;
 
     ------------------------------------------------------------
-    -- CADASTRAR CONTA (Limite calculado automaticamente por trigger)
+    -- REGISTAR CONTA (Limite dinâmico automático por Trigger)
     ------------------------------------------------------------
     PROCEDURE CADASTRAR_CONTA(
         P_ID_CLIENTE NUMBER,
@@ -324,7 +325,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     END DELETAR_CONTA;
 
     ------------------------------------------------------------
-    -- LISTAR CONTAS
+    -- LISTAR CONTAS (Formatação melhorada sem espaços extras)
     ------------------------------------------------------------
     PROCEDURE LISTAR_CONTAS IS
     BEGIN
@@ -333,8 +334,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
                 'CONTA: ' || C.ID_CONTA || 
                 ' | CLIENTE: ' || C.ID_CLIENTE || 
                 ' | TIPO: ' || C.TIPO_CONTA || 
-                ' | SALDO: R$ ' || TO_CHAR(C.SALDO, '999G999D99') || 
-                ' | LIMITE: R$ ' || TO_CHAR(C.LIMITE_ESPECIAL, '999G999D99')
+                ' | SALDO: R$ ' || TO_CHAR(C.SALDO, 'FM999G990D00') || 
+                ' | LIMITE: R$ ' || TO_CHAR(C.LIMITE_ESPECIAL, 'FM999G990D00')
             );
         END LOOP;
     END LISTAR_CONTAS;
@@ -357,12 +358,12 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
         DBMS_OUTPUT.PUT_LINE(
             'CONTA: ' || P_ID_CONTA || 
             ' | TIPO: ' || V_TIPO || 
-            ' | SALDO: R$ ' || TO_CHAR(V_SALDO, '999G999D99') || 
-            ' | LIMITE: R$ ' || TO_CHAR(V_LIMITE, '999G999D99')
+            ' | SALDO: R$ ' || TO_CHAR(V_SALDO, 'FM999G990D00') || 
+            ' | LIMITE: R$ ' || TO_CHAR(V_LIMITE, 'FM999G990D00')
         );
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            DBMS_OUTPUT.PUT_LINE('Erro: Conta ID ' || P_ID_CONTA || ' não encontrada.');
+            DBMS_OUTPUT.PUT_LINE('Erro: A conta ID ' || P_ID_CONTA || ' não foi encontrada.');
     END BUSCAR_CONTA_POR_ID;
 
     ------------------------------------------------------------
@@ -380,13 +381,14 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     END REALIZAR_DEPOSITO;
 
     ------------------------------------------------------------
-    -- SAQUE (Simplificado: Deixa a Trigger validar o limite)
+    -- LEVANTAMENTO (Saque)
     ------------------------------------------------------------
     PROCEDURE REALIZAR_SAQUE(
         P_ID_CONTA NUMBER,
         P_VALOR NUMBER
     ) IS
     BEGIN
+        -- O débito é efetuado. Se violar os limites, a trigger TRG_VERIFICAR_SALDO impede a gravação.
         UPDATE CONTA SET SALDO = SALDO - P_VALOR WHERE ID_CONTA = P_ID_CONTA;
 
         INSERT INTO MOVIMENTACAO (ID_MOVIMENTACAO, ID_CONTA, TIPO_MOVIMENTACAO, VALOR, DATA_MOVIMENTACAO)
@@ -422,49 +424,60 @@ END PKG_BANCO;
 /
 
 ----------------------------------------------------------------
--- TRIGGER: CALCULAR LIMITE DINÂMICO (Melhoria de Regra de Negócio!)
--- Define o Cheque Especial somente para Conta CORRENTE.
--- Conta POUPANÇA possui sempre limite R$ 0,00.
+-- TRIGGER: CALCULAR LIMITE DINÂMICO (Opção B - Limite Histórico)
+-- Posicionamento correto: Logo após o Package Body.
+-- Controla a inteligência do limite de crédito dinâmico.
 ----------------------------------------------------------------
 CREATE OR REPLACE TRIGGER TRG_CALCULAR_LIMITE_DINAMICO
 BEFORE INSERT OR UPDATE OF SALDO, TIPO_CONTA ON CONTA
 FOR EACH ROW
+DECLARE
+    V_LIMITE_CALCULADO NUMBER := 0;
 BEGIN
-    -- Se for Conta Poupança, o cheque especial é sempre zero
+    -- 1. Se for Conta Poupança, o descoberto (cheque especial) é sempre zero
     IF UPPER(:NEW.TIPO_CONTA) = 'POUPANCA' THEN
         :NEW.LIMITE_ESPECIAL := 0;
         
-    -- Se for Conta Corrente, calcula baseado no saldo atual (apenas se saldo for positivo para evitar travar contas já negativas)
+    -- 2. Se for Conta Corrente, calcula o limite recomendado com base no saldo positivo atual
     ELSIF UPPER(:NEW.TIPO_CONTA) = 'CORRENTE' AND :NEW.SALDO >= 0 THEN
         IF :NEW.SALDO < 1500 THEN
-            :NEW.LIMITE_ESPECIAL := 0;
+            V_LIMITE_CALCULADO := 0;
         ELSIF :NEW.SALDO >= 1500 AND :NEW.SALDO < 2500 THEN
-            :NEW.LIMITE_ESPECIAL := 500;
+            V_LIMITE_CALCULADO := 500;
         ELSIF :NEW.SALDO >= 2500 THEN
-            :NEW.LIMITE_ESPECIAL := 1000;
+            V_LIMITE_CALCULADO := 1000;
+        END IF;
+        
+        -- VALIDAÇÃO DA OPÇÃO B (Com proteção NVL para operações de INSERT):
+        -- O banco só altera para cima. Se o saldo cair, preserva-se o limite de direito já conquistado.
+        IF V_LIMITE_CALCULADO > NVL(:OLD.LIMITE_ESPECIAL, 0) THEN
+            :NEW.LIMITE_ESPECIAL := V_LIMITE_CALCULADO;
+        ELSE
+            :NEW.LIMITE_ESPECIAL := NVL(:OLD.LIMITE_ESPECIAL, 0);
         END IF;
     END IF;
 END;
 /
 
 ----------------------------------------------------------------
--- TRIGGER VERIFICAR SALDO (Guardiã absoluta do Cheque Especial)
+-- TRIGGER: VERIFICAR SALDO DISPONÍVEL (Segurança do Limite)
 ----------------------------------------------------------------
 CREATE OR REPLACE TRIGGER TRG_VERIFICAR_SALDO
 BEFORE UPDATE OF SALDO ON CONTA
 FOR EACH ROW
 BEGIN
+    -- Compara se o novo saldo ultrapassa o limite negativo máximo autorizado
     IF :NEW.SALDO < (:OLD.LIMITE_ESPECIAL * -1) THEN
         RAISE_APPLICATION_ERROR(
             -20002,
-            'Operação cancelada: O valor excede o saldo e o limite de cheque especial disponível.'
+            'Operação recusada: O valor do débito excede o saldo disponível e o limite do cheque especial.'
         );
     END IF;
 END;
 /
 
 ----------------------------------------------------------------
--- TRIGGER LOG (Auditoria Automática)
+-- TRIGGER: LOG DE OPERAÇÕES (Trilha de auditoria automática)
 ----------------------------------------------------------------
 CREATE OR REPLACE TRIGGER TRG_LOG_OPERACOES
 AFTER INSERT OR UPDATE OR DELETE ON CONTA
@@ -484,7 +497,7 @@ END;
 /
 
 ----------------------------------------------------------------
--- CARGA DE TESTE INICIAL INTELIGENTE
+-- CARGA DE TESTES INICIAL
 ----------------------------------------------------------------
 DECLARE
     FUNCTION obter_id_cliente(p_cpf VARCHAR2) RETURN NUMBER IS
@@ -497,7 +510,7 @@ DECLARE
     END;
 BEGIN
     ------------------------------------------------------------
-    -- 1. Cadastra os Clientes
+    -- 1. Registo de Clientes de Teste
     ------------------------------------------------------------
     PKG_BANCO.CADASTRAR_CLIENTE('Erik Menezes', '123.456.789-00', '81985084008', 'erikcarlos.menezes@gmail.com');
     PKG_BANCO.CADASTRAR_CLIENTE('Maria Silva', '987.654.321-00', '81985111111', 'maria@gmail.com');
@@ -505,16 +518,14 @@ BEGIN
     PKG_BANCO.CADASTRAR_CLIENTE('Camila Vitoria', '153.510.544-50', '81985343405', 'camila06vitoria14@gmail.com');
 
     ------------------------------------------------------------
-    -- 2. Cadastra as Contas (Com e Sem Cheque Especial baseado no tipo de conta!)
+    -- 2. Abertura de Contas (Os limites serão auto-atribuídos pelas triggers)
     ------------------------------------------------------------
-    -- Parâmetros: PKG_BANCO.CADASTRAR_CONTA(ID_CLIENTE, TIPO_CONTA, SALDO_INICIAL)
-    
-    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('123.456.789-00'), 'CORRENTE', 1500);  -- Saldo 1500 -> Cheque Especial automático de R$ 500
-    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('987.654.321-00'), 'POUPANCA', 2000);  -- Poupança -> Cheque Especial é R$ 0 (Sempre!)
-    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('154.412.544-59'), 'CORRENTE', 3000);  -- Saldo 3000 -> Cheque Especial automático de R$ 1000
-    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('153.510.544-50'), 'POUPANCA', 4000);  -- Poupança -> Cheque Especial é R$ 0
+    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('123.456.789-00'), 'CORRENTE', 1500);  -- Saldo 1500 -> Ganha limite R$ 500,00
+    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('987.654.321-00'), 'POUPANCA', 2000);  -- Poupança -> Limite é sempre R$ 0,00
+    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('154.412.544-59'), 'CORRENTE', 3000);  -- Saldo 3000 -> Ganha limite R$ 1000,00
+    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('153.510.544-50'), 'POUPANCA', 4000);  -- Poupança -> Limite é sempre R$ 0,00
 
     COMMIT;
-    DBMS_OUTPUT.PUT_LINE('Banco de dados inicializado e unificado com absoluto sucesso!');
+    DBMS_OUTPUT.PUT_LINE('Banco de dados inicializado com sucesso com a regra da Opção B ativa!');
 END;
 /
