@@ -1,12 +1,12 @@
 ----------------------------------------------------------------
--- LIMPEZA DE OBJETOS ANTERIORES (Para execução limpa do guião)
+-- LIMPEZA DE OBJETOS ANTERIORES
 ----------------------------------------------------------------
 DECLARE
     PROCEDURE dropar_objeto(p_tipo VARCHAR2, p_nome VARCHAR2) IS
     BEGIN
         EXECUTE IMMEDIATE 'DROP ' || p_tipo || ' ' || p_nome;
     EXCEPTION
-        WHEN OTHERS THEN NULL; -- Ignora se o objeto não existir
+        WHEN OTHERS THEN NULL;
     END;
 BEGIN
     dropar_objeto('TRIGGER', 'TRG_LOG_OPERACOES');
@@ -30,7 +30,7 @@ END;
 CREATE TABLE CLIENTE (
     ID_CLIENTE NUMBER PRIMARY KEY,
     NOME VARCHAR2(100),
-    CPF VARCHAR2(14) UNIQUE, -- CPF Único para permitir a pesquisa segura na carga de dados
+    CPF VARCHAR2(14) UNIQUE, 
     TELEFONE VARCHAR2(20),
     EMAIL VARCHAR2(100)
 );
@@ -41,7 +41,7 @@ CREATE TABLE CLIENTE (
 CREATE TABLE CONTA (
     ID_CONTA NUMBER PRIMARY KEY,
     ID_CLIENTE NUMBER,
-    TIPO_CONTA VARCHAR2(20), -- 'CORRENTE' ou 'POUPANCA'
+    TIPO_CONTA VARCHAR2(20), 
     SALDO NUMBER(10,2),
     LIMITE_ESPECIAL NUMBER(10,2) DEFAULT 0,
 
@@ -115,7 +115,7 @@ CREATE OR REPLACE PACKAGE PKG_BANCO AS
         P_ID_CLIENTE NUMBER
     );
 
-    -- CONSULTA COMPLETA UNIFICADA (Com associação de contas)
+    -- CONSULTA COMPLETA UNIFICADA 
     PROCEDURE BUSCAR_CLIENTE_COMPLETO(
         P_ID_CLIENTE NUMBER
     );
@@ -168,7 +168,7 @@ END PKG_BANCO;
 /
 
 ----------------------------------------------------------------
--- PACKAGE BODY (Implementação das regras de negócio)
+-- PACKAGE BODY 
 ----------------------------------------------------------------
 CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
 
@@ -203,7 +203,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     END ATUALIZAR_CLIENTE;
 
     ------------------------------------------------------------
-    -- DELETAR CLIENTE (Exclusão em cascata controlada)
+    -- DELETAR CLIENTE
     ------------------------------------------------------------
     PROCEDURE DELETAR_CLIENTE(
         P_ID_CLIENTE NUMBER
@@ -253,7 +253,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     END BUSCAR_CLIENTE_POR_ID;
 
     ------------------------------------------------------------
-    -- BUSCAR CLIENTE COMPLETO (Relatório consolidado com LEFT JOIN)
+    -- BUSCAR CLIENTE COMPLETO
     ------------------------------------------------------------
     PROCEDURE BUSCAR_CLIENTE_COMPLETO(
         P_ID_CLIENTE NUMBER
@@ -290,7 +290,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     END BUSCAR_CLIENTE_COMPLETO;
 
     ------------------------------------------------------------
-    -- REGISTAR CONTA (Limite dinâmico automático por Trigger)
+    -- REGISTAR CONTA
     ------------------------------------------------------------
     PROCEDURE CADASTRAR_CONTA(
         P_ID_CLIENTE NUMBER,
@@ -325,7 +325,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     END DELETAR_CONTA;
 
     ------------------------------------------------------------
-    -- LISTAR CONTAS (Formatação melhorada sem espaços extras)
+    -- LISTAR CONTAS 
     ------------------------------------------------------------
     PROCEDURE LISTAR_CONTAS IS
     BEGIN
@@ -381,14 +381,13 @@ CREATE OR REPLACE PACKAGE BODY PKG_BANCO AS
     END REALIZAR_DEPOSITO;
 
     ------------------------------------------------------------
-    -- LEVANTAMENTO (Saque)
+    -- LEVANTAMENTO
     ------------------------------------------------------------
     PROCEDURE REALIZAR_SAQUE(
         P_ID_CONTA NUMBER,
         P_VALOR NUMBER
     ) IS
     BEGIN
-        -- O débito é efetuado. Se violar os limites, a trigger TRG_VERIFICAR_SALDO impede a gravação.
         UPDATE CONTA SET SALDO = SALDO - P_VALOR WHERE ID_CONTA = P_ID_CONTA;
 
         INSERT INTO MOVIMENTACAO (ID_MOVIMENTACAO, ID_CONTA, TIPO_MOVIMENTACAO, VALOR, DATA_MOVIMENTACAO)
@@ -424,9 +423,7 @@ END PKG_BANCO;
 /
 
 ----------------------------------------------------------------
--- TRIGGER: CALCULAR LIMITE DINÂMICO (Opção B - Limite Histórico)
--- Posicionamento correto: Logo após o Package Body.
--- Controla a inteligência do limite de crédito dinâmico.
+-- TRIGGER: CALCULAR LIMITE DINÂMICO
 ----------------------------------------------------------------
 CREATE OR REPLACE TRIGGER TRG_CALCULAR_LIMITE_DINAMICO
 BEFORE INSERT OR UPDATE OF SALDO, TIPO_CONTA ON CONTA
@@ -434,11 +431,9 @@ FOR EACH ROW
 DECLARE
     V_LIMITE_CALCULADO NUMBER := 0;
 BEGIN
-    -- 1. Se for Conta Poupança, o descoberto (cheque especial) é sempre zero
     IF UPPER(:NEW.TIPO_CONTA) = 'POUPANCA' THEN
         :NEW.LIMITE_ESPECIAL := 0;
         
-    -- 2. Se for Conta Corrente, calcula o limite recomendado com base no saldo positivo atual
     ELSIF UPPER(:NEW.TIPO_CONTA) = 'CORRENTE' AND :NEW.SALDO >= 0 THEN
         IF :NEW.SALDO < 1500 THEN
             V_LIMITE_CALCULADO := 0;
@@ -448,8 +443,6 @@ BEGIN
             V_LIMITE_CALCULADO := 1000;
         END IF;
         
-        -- VALIDAÇÃO DA OPÇÃO B (Com proteção NVL para operações de INSERT):
-        -- O banco só altera para cima. Se o saldo cair, preserva-se o limite de direito já conquistado.
         IF V_LIMITE_CALCULADO > NVL(:OLD.LIMITE_ESPECIAL, 0) THEN
             :NEW.LIMITE_ESPECIAL := V_LIMITE_CALCULADO;
         ELSE
@@ -460,13 +453,12 @@ END;
 /
 
 ----------------------------------------------------------------
--- TRIGGER: VERIFICAR SALDO DISPONÍVEL (Segurança do Limite)
+-- TRIGGER: VERIFICAR SALDO DISPONÍVEL
 ----------------------------------------------------------------
 CREATE OR REPLACE TRIGGER TRG_VERIFICAR_SALDO
 BEFORE UPDATE OF SALDO ON CONTA
 FOR EACH ROW
 BEGIN
-    -- Compara se o novo saldo ultrapassa o limite negativo máximo autorizado
     IF :NEW.SALDO < (:OLD.LIMITE_ESPECIAL * -1) THEN
         RAISE_APPLICATION_ERROR(
             -20002,
@@ -477,7 +469,7 @@ END;
 /
 
 ----------------------------------------------------------------
--- TRIGGER: LOG DE OPERAÇÕES (Trilha de auditoria automática)
+-- TRIGGER: LOG DE OPERAÇÕES
 ----------------------------------------------------------------
 CREATE OR REPLACE TRIGGER TRG_LOG_OPERACOES
 AFTER INSERT OR UPDATE OR DELETE ON CONTA
@@ -518,12 +510,12 @@ BEGIN
     PKG_BANCO.CADASTRAR_CLIENTE('Camila Vitoria', '153.510.544-50', '81985343405', 'camila06vitoria14@gmail.com');
 
     ------------------------------------------------------------
-    -- 2. Abertura de Contas (Os limites serão auto-atribuídos pelas triggers)
+    -- 2. Abertura de Contas
     ------------------------------------------------------------
-    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('123.456.789-00'), 'CORRENTE', 1500);  -- Saldo 1500 -> Ganha limite R$ 500,00
-    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('987.654.321-00'), 'POUPANCA', 2000);  -- Poupança -> Limite é sempre R$ 0,00
-    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('154.412.544-59'), 'CORRENTE', 3000);  -- Saldo 3000 -> Ganha limite R$ 1000,00
-    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('153.510.544-50'), 'POUPANCA', 4000);  -- Poupança -> Limite é sempre R$ 0,00
+    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('123.456.789-00'), 'CORRENTE', 1500); 
+    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('987.654.321-00'), 'POUPANCA', 2000);  
+    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('154.412.544-59'), 'CORRENTE', 3000);  
+    PKG_BANCO.CADASTRAR_CONTA(obter_id_cliente('153.510.544-50'), 'POUPANCA', 4000); 
 
     COMMIT;
     DBMS_OUTPUT.PUT_LINE('Banco de dados inicializado com sucesso com a regra da Opção B ativa!');
